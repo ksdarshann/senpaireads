@@ -743,6 +743,14 @@
 
   loadSettings();
   injectReaderStyles();
-  uploadInput.addEventListener("change", handleUpload);
+  uploadInput.addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  status.textContent = `Selected: ${file.name}`;
+
+  handleUpload(event);
+});
   loadLibrary();
 })();
