@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10101b">
+  <meta name="description" content="SenpaiReads — your anime-inspired EPUB reading library.">
+  <title>SenpaiReads — Your Reading Universe</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="navbar">
+    <a class="brand" href="#" aria-label="SenpaiReads home">
+      <span class="brand-icon">読</span>
+      <span>Senpai<span class="accent">Reads</span></span>
+    </a>
+    <span class="nav-label">YOUR READING UNIVERSE</span>
+    <label class="upload-btn" for="book-upload">＋ Add Book</label>
+    <input id="book-upload" type="file" accept=".epub,application/epub+zip" hidden>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">✦ YOUR NEXT ADVENTURE AWAITS ✦</p>
+      <h1>Enter your <span class="accent">reading</span><br>universe.</h1>
+      <p class="hero-text">Every book is a new world. Choose your next adventure.</p>
+      <div class="hero-actions">
+        <label class="upload-btn large" for="book-upload">Start Reading →</label>
+        <span class="privacy-note">♡ Your library stays in your browser</span>
+      </div>
+    </section>
+
+    <section class="library-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">YOUR COLLECTION</p>
+          <h2>My Bookshelf <span id="book-count" class="count">0</span></h2>
+        </div>
+        <span class="section-note">YOUR STORIES, YOUR WORLD</span>
+      </div>
+
+      <p id="status" class="status" role="status" aria-live="polite">Preparing your library…</p>
+
+      <div id="empty-state" class="empty-state" hidden>
+        <div class="empty-symbol">本</div>
+        <h3>Your adventure starts here</h3>
+        <p>Your bookshelf is waiting for its first story.</p>
+        <label class="upload-btn" for="book-upload">Choose an EPUB</label>
+      </div>
+
+      <div id="bookshelf" class="bookshelf"></div>
+    </section>
+
+    <section id="reader-view" class="reader-view" hidden>
+      <div class="reader-toolbar">
+        <button id="back-button" class="secondary-btn" type="button">← Bookshelf</button>
+        <strong id="reader-title">Now Reading</strong>
+        <div class="reader-controls">
+          <button id="prev-button" class="secondary-btn" type="button" aria-label="Previous page">←</button>
+          <button id="next-button" class="secondary-btn" type="button" aria-label="Next page">→</button>
+        </div>
+      </div>
+      <div id="viewer" class="viewer"></div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand footer-brand" href="#"><span class="brand-icon">読</span> SenpaiReads</a>
+    <p>Made for readers, dreamers, and anime fans. ✦</p>
+  </footer>
+</body>
+</html>
