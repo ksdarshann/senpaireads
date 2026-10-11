@@ -724,3 +724,90 @@ footer p {
     transition: none !important;
   }
 }
+
+/* ── SenpaiReads bookshelf refinement ── */
+
+.library-section {
+  padding-top: 28px;
+}
+
+.section-heading {
+  margin-bottom: 24px;
+}
+
+.section-heading h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.count {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.status {
+  line-height: 1.7;
+}
+
+.bookshelf {
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(155px, 100%), 1fr)
+  );
+  gap: 36px 24px;
+}
+
+.book-item {
+  min-width: 0;
+}
+
+.book-open {
+  border-radius: 12px;
+}
+
+.cover-wrap {
+  border-radius: 6px 12px 12px 6px;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.22),
+    inset 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.book-name {
+  margin-top: 14px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.book-meta {
+  margin-top: 3px;
+}
+
+.empty-state {
+  padding: clamp(32px, 6vw, 60px) 20px;
+}
+
+.empty-symbol {
+  margin-bottom: 8px;
+}
+
+@media (min-width: 1000px) {
+  .bookshelf {
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(165px, 1fr)
+    );
+  }
+}
+
+@media (max-width: 650px) {
+  .library-section {
+    padding-top: 12px;
+  }
+
+  .bookshelf {
+    gap: 26px 15px;
+  }
+}
