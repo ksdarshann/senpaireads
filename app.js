@@ -8,8 +8,8 @@
   const emptyState = $("empty-state");
   const status = $("status");
   const librarySection = document.querySelector(".library-section");
-  const readerView = $("reader-view");
-  const viewer = $("viewer");
+  const readerTitle = $("reader-title");
+  const bookCount = $("book-count");
 
   if (!uploadInput || !bookshelf || !readerView || !viewer) {
     console.error("SenpaiReads: Required HTML elements are missing.");
