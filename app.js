@@ -14,13 +14,14 @@
 
   if (!uploadInput || !bookshelf || !readerView || !viewer) {
     console.error("SenpaiReads: Required HTML elements are missing.");
+    if (status) status.textContent = "Setup error: required HTML elements are missing.";
     return;
   }
 
   if (!window.localforage || !window.ePub) {
     if (status) {
-      status.textContent =
-        "Reader libraries failed to load. Check your internet connection and refresh.";
+      status.textContent = "Reader libraries failed to load. Check your internet connection and refresh.";
+      status.style.color = "#ff8b96";
     }
     return;
   }
@@ -48,7 +49,7 @@
     if (emptyState) emptyState.hidden = count > 0;
 
     const counter = $("book-count");
-    if (counter) counter.textContent = count;
+    if (counter) counter.textContent = String(count);
   }
 
   function fallbackCover(title) {
@@ -65,12 +66,32 @@
     return fallback;
   }
 
+  async function createEpubBook(data) {
+    const book = ePub();
+
+    try {
+      await book.open(data, "binary");
+      await book.ready;
+      return book;
+    } catch (error) {
+      try {
+        book.destroy();
+      } catch (_) {}
+      throw error;
+    }
+  }
+
   async function destroyReader() {
     try {
       if (activeRendition) activeRendition.destroy();
+    } catch (error) {
+      console.warn("Rendition cleanup:", error);
+    }
+
+    try {
       if (activeBook) activeBook.destroy();
     } catch (error) {
-      console.warn("Reader cleanup:", error);
+      console.warn("Book cleanup:", error);
     }
 
     activeRendition = null;
@@ -79,16 +100,25 @@
     viewer.replaceChildren();
   }
 
+  async function closeReader() {
+    await destroyReader();
+    readerView.hidden = true;
+
+    if (librarySection) librarySection.hidden = false;
+
+    setStatus("Back at your bookshelf.");
+  }
+
   async function openBook(id, data, title) {
     if (isOpening) return;
+
     isOpening = true;
-    setStatus(`Opening ${title}…`);
+    setStatus(`Opening "${title}"…`);
 
     try {
       await destroyReader();
 
-      activeBook = ePub(data);
-      await activeBook.ready;
+      activeBook = await createEpubBook(data);
 
       activeRendition = activeBook.renderTo(viewer, {
         width: "100%",
@@ -98,7 +128,6 @@
       });
 
       await activeRendition.display();
-
       activeBookId = id;
 
       const titleElement = $("reader-title");
@@ -110,21 +139,29 @@
       setStatus(`Now reading: ${title}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error("Unable to open EPUB:", error);
+      console.error("Could not open EPUB:", error);
       await destroyReader();
-      setStatus("Unable to open this book. Please try another EPUB file.", true);
+
+      setStatus(
+        `Could not open "${title}". ${error?.message || "The EPUB may be damaged or unsupported."}`,
+        true
+      );
     } finally {
       isOpening = false;
     }
   }
 
   async function displayBook(id, record) {
-    const data = record.data;
-    const title = record.title || record.name || "Untitled book";
+    // Support the current record format and older saved formats.
+    const data = record?.data || record;
+    const title = record?.title || record?.name || "Untitled book";
+    const author = record?.author || "EPUB";
 
-    // Avoid duplicate cards.
-    const existing = Array.from(bookshelf.children)
-      .find((card) => card.dataset.bookId === id);
+    if (!data) return;
+
+    const existing = Array.from(bookshelf.children).find(
+      (card) => card.dataset.bookId === id
+    );
 
     if (existing) existing.remove();
 
@@ -147,7 +184,7 @@
 
     const meta = document.createElement("p");
     meta.className = "book-meta";
-    meta.textContent = record.author || "EPUB";
+    meta.textContent = author;
 
     openButton.append(cover, name, meta);
     openButton.addEventListener("click", () => openBook(id, data, title));
@@ -162,20 +199,18 @@
     deleteButton.addEventListener("click", async (event) => {
       event.stopPropagation();
 
-      if (!window.confirm(`Remove "${title}" from SenpaiReads?`)) return;
+      if (!confirm(`Remove "${title}" from SenpaiReads?`)) return;
 
       try {
         await localforage.removeItem(id);
         card.remove();
 
-        if (activeBookId === id) {
-          await closeReader();
-        }
+        if (activeBookId === id) await closeReader();
 
         updateEmptyState();
-        setStatus(`Removed ${title}.`);
+        setStatus(`Removed "${title}".`);
       } catch (error) {
-        console.error(error);
+        console.error("Delete failed:", error);
         setStatus("Could not delete this book.", true);
       }
     });
@@ -184,29 +219,31 @@
     bookshelf.appendChild(card);
     updateEmptyState();
 
-    // Try to retrieve the book's cover.
     let coverBook;
 
     try {
-      coverBook = ePub(data);
-      const url = await coverBook.coverUrl();
+      coverBook = await createEpubBook(data);
+      const coverUrl = await coverBook.coverUrl();
 
-      if (url) {
+      if (coverUrl) {
         const image = document.createElement("img");
         image.alt = `Cover of ${title}`;
-        image.src = url;
+        image.src = coverUrl;
 
         image.onerror = () => {
-          image.remove();
           cover.replaceChildren(fallbackCover(title));
         };
 
         cover.replaceChildren(image);
       }
     } catch (error) {
-      console.warn("Cover unavailable:", error);
+      console.warn(`Cover unavailable for "${title}":`, error);
     } finally {
-      if (coverBook) coverBook.destroy();
+      if (coverBook) {
+        try {
+          coverBook.destroy();
+        } catch (_) {}
+      }
     }
   }
 
@@ -215,22 +252,21 @@
     bookshelf.replaceChildren();
 
     try {
-      const saved = [];
+      const savedBooks = [];
 
       await localforage.iterate((record, key) => {
-        if (record && record.data) {
-          saved.push({ id: key, record });
-        }
+        if (record) savedBooks.push({ id: key, record });
       });
 
-      for (const item of saved) {
+      for (const item of savedBooks) {
         await displayBook(item.id, item.record);
       }
 
       updateEmptyState();
+
       setStatus(
-        saved.length
-          ? `${saved.length} book${saved.length === 1 ? "" : "s"} in your library.`
+        savedBooks.length
+          ? `${savedBooks.length} saved item${savedBooks.length === 1 ? "" : "s"} in your library.`
           : "Your library is ready. Add your first EPUB to begin."
       );
     } catch (error) {
@@ -240,116 +276,115 @@
   }
 
   async function handleUpload(event) {
-    const file = event.target.files && event.target.files[0];
+    const file = event.target.files?.[0];
     uploadInput.value = "";
 
     if (!file) return;
 
+    const fileName = file.name.toLowerCase();
     const isPDF =
-      file.type === "application/pdf" ||
-      file.name.toLowerCase().endsWith(".pdf");
-
+      file.type === "application/pdf" || fileName.endsWith(".pdf");
     const isEPUB =
-      file.type === "application/epub+zip" ||
-      file.name.toLowerCase().endsWith(".epub");
+      file.type === "application/epub+zip" || fileName.endsWith(".epub");
 
     if (isPDF) {
       setStatus(
-        "PDF conversion is not enabled yet. We'll add the converter in the next stage.",
+        "PDF conversion is not available yet. We'll add it next.",
         true
       );
       return;
     }
 
     if (!isEPUB) {
-      setStatus("Please select a valid .epub file.", true);
+      setStatus("Please select an .epub file.", true);
       return;
     }
 
-    setStatus(`Importing ${file.name}…`);
+    setStatus(`Checking "${file.name}"…`);
 
-    let book;
+    let validationBook;
 
     try {
       const data = await file.arrayBuffer();
 
-      book = ePub(data);
-      await book.ready;
+      // Open as binary and validate before saving.
+      validationBook = await createEpubBook(data);
 
-      const metadata = await book.loaded.metadata;
+      const metadata = await validationBook.loaded.metadata;
       const title =
-        (metadata && metadata.title) ||
-        file.name.replace(/\.epub$/i, "");
-
-      const record = {
-        title,
-        author: (metadata && metadata.creator) || "EPUB",
-        data,
-        addedAt: new Date().toISOString()
-      };
+        metadata?.title || file.name.replace(/\.epub$/i, "");
+      const author = metadata?.creator || "EPUB";
 
       const id =
         `book_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      const record = {
+        title,
+        author,
+        data,
+        addedAt: new Date().toISOString()
+      };
 
       await localforage.setItem(id, record);
       await displayBook(id, record);
 
       setStatus(`Added "${title}" to SenpaiReads.`);
     } catch (error) {
-      console.error("Import failed:", error);
+      console.error("EPUB import error:", error);
+
       setStatus(
-        "This EPUB could not be imported. Check that it is a valid EPUB file.",
+        `EPUB import failed: ${error?.message || "Invalid, damaged, encrypted, or unsupported EPUB."}`,
         true
       );
     } finally {
-      if (book) book.destroy();
+      if (validationBook) {
+        try {
+          validationBook.destroy();
+        } catch (_) {}
+      }
     }
-  }
-
-  async function closeReader() {
-    await destroyReader();
-    readerView.hidden = true;
-
-    if (librarySection) librarySection.hidden = false;
-
-    setStatus("Back at your bookshelf.");
   }
 
   const backButton = $("back-button");
   const prevButton = $("prev-button");
   const nextButton = $("next-button");
 
-  if (backButton) backButton.addEventListener("click", closeReader);
+  if (backButton) {
+    backButton.addEventListener("click", closeReader);
+  }
 
   if (prevButton) {
     prevButton.addEventListener("click", () => {
-      if (activeRendition) activeRendition.prev();
+      if (activeRendition) {
+        activeRendition.prev().catch(console.warn);
+      }
     });
   }
 
   if (nextButton) {
     nextButton.addEventListener("click", () => {
-      if (activeRendition) activeRendition.next();
+      if (activeRendition) {
+        activeRendition.next().catch(console.warn);
+      }
     });
   }
 
   document.addEventListener("keydown", (event) => {
-    if (readerView.hidden) return;
-
-    if (event.key === "Escape") closeReader();
-
-    if (event.key === "ArrowLeft" && activeRendition) {
-      event.preventDefault();
-      activeRendition.prev();
+    if (readerView.hidden || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
     }
 
-    if (event.key === "ArrowRight" && activeRendition) {
+    if (event.key === "Escape") {
+      closeReader();
+    } else if (event.key === "ArrowLeft" && activeRendition) {
       event.preventDefault();
-      activeRendition.next();
+      activeRendition.prev().catch(console.warn);
+    } else if (event.key === "ArrowRight" && activeRendition) {
+      event.preventDefault();
+      activeRendition.next().catch(console.warn);
     }
   });
 
   uploadInput.addEventListener("change", handleUpload);
-
   loadLibrary();
 })();
