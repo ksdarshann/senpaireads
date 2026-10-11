@@ -182,3 +182,74 @@ a:focus-visible {
     border-radius: 12px;
   }
 }
+/* ── Reader toolbar layout refinement ── */
+
+.reader-view {
+  border: 1px solid rgba(183, 160, 255, 0.16);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.reader-toolbar {
+  padding: 18px 22px;
+  gap: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.reader-toolbar strong {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.reader-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reader-controls > * {
+  max-width: 100%;
+}
+
+.reader-toolbar select,
+.reader-toolbar input {
+  accent-color: var(--accent);
+}
+
+.reader-toolbar select {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-hover);
+  color: var(--text);
+  padding: 9px 12px;
+}
+
+.reader-toolbar button {
+  min-height: 42px;
+  border-radius: 10px;
+}
+
+.reader-toolbar button:hover {
+  border-color: rgba(183, 160, 255, 0.35);
+}
+
+.viewer {
+  border-top: 0;
+}
+
+@media (max-width: 650px) {
+  .reader-toolbar {
+    padding: 14px;
+  }
+
+  .reader-controls {
+    width: 100%;
+  }
+
+  .reader-controls > * {
+    min-width: 0;
+  }
+}
